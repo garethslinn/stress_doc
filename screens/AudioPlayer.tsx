@@ -24,13 +24,30 @@ const AudioPlayer: React.FC = () => {
  
   const [selectedPlayer, setSelectedPlayer] = useState<Audio.Sound | null>(null);
 
-  const playSound = async (path: string) => {
 
-    console.log('path', path)
-    const { sound } = await Audio.Sound.createAsync({ uri: path });
-    setSelectedPlayer(sound);
-    await sound.playAsync();
+
+  const playSound = async (path: string) => {
+    const sound = new Audio.Sound();
+    try {
+      await sound.loadAsync({ uri: path });
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded) {
+          if (status.isPlaying) {
+            console.log('Audio is playing');
+          } else {
+            console.log('Audio is paused or stopped');
+          }
+        } else {
+          console.log('Error loading audio:', status.error);
+        }
+      });
+      await sound.playAsync();
+    } catch (error) {
+      console.error('Error playing sound:', error);
+    }
   };
+  
+
 
   const stopSound = useCallback(() => {
     selectedPlayer?.stopAsync();
