@@ -1,76 +1,59 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, FlatList } from 'react-native';
-import { audioPlayerStyles as styles } from '../assets/styles';
-import * as FileSystem from 'expo-file-system';
-import { Audio } from 'expo-av';
-import { API, AUDIO } from '../constants';
+import React, {useState} from 'react';
+import {
+  TouchableOpacity,
+  FlatList,
+  RefreshControl,
+  Text,
+  View,
+  SafeAreaView,
+} from 'react-native';
+import {Title} from '../components/Title';
 
-interface MP3File {
-  name: string;
-  path: string;
-  downloaded: boolean;
-}
+import {causes} from '../data/causes';
+import Footer from '../components/Footer';
+import Header from '../components/Header';
+import {styles} from '../assets/styles';
+import {TEXT} from '../constants';
+import {IssuesProps} from '../types/screens/Issues';
 
-const AudioComponent: React.FC = () => {
-  const [mp3Files, setMP3Files] = useState<MP3File[]>([
-    {name: 'testAudio1', path: API.url + AUDIO.testAudio, downloaded: false},
-    {name: 'testAudio2', path: API.url + AUDIO.testAudio2, downloaded: false},
-    {name: 'testAudio3', path: API.url + AUDIO.testAudio3, downloaded: false},
-  ]);
-  const [soundObject, setSoundObject] = useState<Audio.Sound | null>(null);
+function Issues({navigation}: IssuesProps): JSX.Element {
+  const [items] = useState(causes); // Initialise items with causes data
+  const [refreshing, setRefreshing] = useState(false);
 
-  const playSound = async (path: string) => {
-    const sound = new Audio.Sound();
-    try {
-      await sound.loadAsync({ uri: path });
-      setSoundObject(sound);
-      await sound.playAsync();
-    } catch (error) {
-      console.error('Error loading sound:', error);
-    }
+  const onRefresh = () => {
+    setRefreshing(true);
+    // Logic to update the items on refresh goes here
+    setRefreshing(false);
   };
-
-  const stopSound = useCallback(async () => {
-    if (soundObject) {
-      await soundObject.stopAsync();
-      await soundObject.unloadAsync();
-      setSoundObject(null);
-    }
-  }, [soundObject]);
-
-  const deleteSound = async (path: string, index: number) => {
-    try {
-      await FileSystem.deleteAsync(path);
-      // Update your mp3Files state as needed
-    } catch (error) {
-      console.error('Error deleting file:', error);
-    }
-  };
-
-  const downloadSound = async (url: string, index: number) => {
-    const destPath = `${FileSystem.documentDirectory}${mp3Files[index].name}.mp3`;
-
-    FileSystem.downloadAsync(url, destPath)
-      .then(() => {
-        // Update your mp3Files state as needed
-      })
-      .catch(error => {
-        console.error('Error downloading file:', error);
-      });
-  };
-
-  useEffect(() => {
-    return () => {
-      stopSound(); // Unload the sound object when component unmounts
-    };
-  }, [stopSound]);
 
   return (
-    <View style={styles.container}>
-      {/* Render your UI components */}
-    </View>
+    <SafeAreaView style={styles.container}>
+      <Header />
+      <View style={styles.body}>
+        <Title title={TEXT.screen.issues} />
+        <FlatList
+          testID="IssueFlatList"
+          keyExtractor={(_item, index) => index.toString()}
+          data={items} // Use items here
+          renderItem={({item}) => (
+            <TouchableOpacity
+              style={styles.item}
+              onPress={() => navigation.navigate('Details', {id: item.id})}>
+              <Text style={styles.itemText}>{item.title}</Text>
+            </TouchableOpacity> // Closing tag added here
+          )}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#555']} // update this color
+            />
+          }
+        />
+      </View>
+      <Footer />
+    </SafeAreaView>
   );
-};
+}
 
-export default AudioComponent;
-
+export default Issues;

@@ -24,6 +24,7 @@ export const AUDIO = {
   testAudio: 'testAudio.mp3',
   testAudio2: 'testAudio2.mp3',
   testAudio3: 'testAudio3.mp3',
+  testAudio4: 'testAudio4.mp3',
 };
 
 export const ICONS = {

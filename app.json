@@ -15,12 +15,21 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.example.myapp",
+      "infoPlist": {
+        "NSCameraUsageDescription": "..."
+      },
+      "config": {
+        "jsEngine": "v8" // Add this line to switch to the V8 engine
+      }
     },
+    
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#ffffff",
+        "hermesEnabled": false
       },
       "package": "com.gslinn.stressdoc"
     },
