@@ -1,12 +1,15 @@
+
+
+
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, SafeAreaView } from 'react-native';
-import { Audio } from 'expo-av';
+import { Audio, InterruptionModeIOS } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import {audioPlayerStyles as styles} from '../assets/styles';
-import { API, AUDIO} from '../constants';
-
+import { audioPlayerStyles as styles } from '../assets/styles';
+import { API, AUDIO } from '../constants';
 
 interface MP3File {
   name: string;
@@ -21,37 +24,80 @@ const AudioPlayer: React.FC = () => {
     { name: 'testAudio3', path: API.url + AUDIO.testAudio3, downloaded: false },
     { name: 'testAudio4', path: API.url + AUDIO.testAudio4, downloaded: false },
   ]);
- 
+
   const [selectedPlayer, setSelectedPlayer] = useState<Audio.Sound | null>(null);
+  const [isSoundFinish, setIsSoundFinish] = useState(false);
 
-
-
-  const playSound = async (path: string) => {
-    const sound = new Audio.Sound();
-    try {
-      await sound.loadAsync({ uri: path });
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded) {
-          if (status.isPlaying) {
-            console.log('Audio is playing');
-          } else {
-            console.log('Audio is paused or stopped');
-          }
-        } else {
-          console.log('Error loading audio:', status.error);
+  useEffect(() => {
+    if (selectedPlayer) {
+      selectedPlayer.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          stopSound();
         }
       });
+    }
+  }, [selectedPlayer]);
+
+  async function playSound(fileName: string, path: string) {
+    try {
+      await Audio.setAudioModeAsync({
+        interruptionModeIOS: InterruptionModeIOS.DuckOthers,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        allowsRecordingIOS: false,
+      });
+  
+      if (selectedPlayer) {
+        await selectedPlayer.unloadAsync();
+      }
+  
+      const sound = new Audio.Sound();
+
+    //  const sound = await Audio.Sound.createAsync({
+    //   uri: path + fileName,
+    // });
+
+  
+      console.log('Attempting to load audio from path:', path);
+  
+      // Load and play the audio using the provided path directly
+      const fs = path + fileName;
+    // await sound.loadAsync(require("../assets/sound/testAudio2.mp3"));
+
+    // await sound.loadAsync(require('file:///Users/garethslinn/Library/Developer/CoreSimulator/Devices/1910CFD3-AF77-4088-9170-359E2F4B0299/data/Containers/Data/Application/524F02AD-9F2F-4EDB-8CA2-0B5E1EE9E558/Documents/testAudio3.mp3'));
+    
+
+    await sound.loadAsync({ uri: fs });
+
+
+      
+      console.log("Playing Sound");
+      await sound.playAsync();
+  
+      console.log('Audio loaded successfully. Now playing...');
+  
+      setSelectedPlayer(sound);
+  
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          setIsSoundFinish(true);
+        }
+      });
+  
       await sound.playAsync();
     } catch (error) {
       console.error('Error playing sound:', error);
     }
-  };
+  }
   
 
-
-  const stopSound = useCallback(() => {
-    selectedPlayer?.stopAsync();
-    setSelectedPlayer(null);
+  const stopSound = useCallback(async () => {
+    if (selectedPlayer) {
+      await selectedPlayer.stopAsync();
+      await selectedPlayer.unloadAsync();
+      setSelectedPlayer(null);
+    }
+    setIsSoundFinish(false);
   }, [selectedPlayer]);
 
   const checkRemoteFileExists = async (url: string): Promise<boolean> => {
@@ -66,13 +112,13 @@ const AudioPlayer: React.FC = () => {
 
   const downloadSound = async (url: string, index: number) => {
     const remoteFileExists = await checkRemoteFileExists(url);
-  
+
     if (!remoteFileExists) {
       console.log('File does not exist remotely.');
       // Handle the case where the file doesn't exist remotely (e.g., show a message)
       return;
     }
-  
+
     const destPath = FileSystem.documentDirectory + mp3Files[index].name + '.mp3';
     try {
       await FileSystem.downloadAsync(url, destPath);
@@ -84,7 +130,7 @@ const AudioPlayer: React.FC = () => {
       });
     } catch (error) {
       console.error('Error downloading file:', error);
-  
+
       // Handle the error, e.g., show an error message to the user
       // You can use 'error.message' to get the error message string
       // and take appropriate action based on the error type
@@ -117,7 +163,6 @@ const AudioPlayer: React.FC = () => {
     };
   }, []);
 
-
   return (
     <SafeAreaView style={styles.container}>
       <Header />
@@ -131,7 +176,7 @@ const AudioPlayer: React.FC = () => {
               <Text style={styles.fileName}>{item.name}</Text>
               {item.downloaded ? (
                 <>
-                  <TouchableOpacity onPress={() => playSound(item.path)} style={styles.button}>
+                  <TouchableOpacity onPress={() => playSound(item.name, item.path)} style={styles.button}>
                     <Text>Play</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => deleteSound(item.path, index)} style={styles.button}>

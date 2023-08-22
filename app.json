@@ -41,5 +41,13 @@
         "projectId": "82dd5fc5-ed53-44dc-aecd-a4a906b0271d"
       }
     }
-  }
+  },
+  "plugins": [
+    [
+      "expo-av",
+      {
+        "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone."
+      }
+    ]
+  ]
 }
