@@ -1,7 +1,3 @@
-
-
-
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, SafeAreaView } from 'react-native';
 import { Audio, InterruptionModeIOS } from 'expo-av';
@@ -29,6 +25,25 @@ const AudioPlayer: React.FC = () => {
   const [isSoundFinish, setIsSoundFinish] = useState(false);
 
   useEffect(() => {
+    const checkDownloads = async () => {
+      const updatedMp3Files = await Promise.all(
+        mp3Files.map(async (file) => {
+          const localPath = FileSystem.documentDirectory + file.name + '.mp3';
+          const exists = await FileSystem.getInfoAsync(localPath);
+          if (exists.exists) {
+            return { ...file, downloaded: true, path: localPath };
+          }
+          return file;
+        })
+      );
+
+      setMP3Files(updatedMp3Files);
+    };
+
+    checkDownloads();
+  }, []);
+
+  useEffect(() => {
     if (selectedPlayer) {
       selectedPlayer.setOnPlaybackStatusUpdate((status) => {
         if (status.isLoaded && status.didJustFinish) {
@@ -46,50 +61,35 @@ const AudioPlayer: React.FC = () => {
         staysActiveInBackground: false,
         allowsRecordingIOS: false,
       });
-  
+
       if (selectedPlayer) {
         await selectedPlayer.unloadAsync();
       }
-  
+
       const sound = new Audio.Sound();
 
-    //  const sound = await Audio.Sound.createAsync({
-    //   uri: path + fileName,
-    // });
-
-  
       console.log('Attempting to load audio from path:', path);
-  
-      // Load and play the audio using the provided path directly
-      const fs = path + fileName;
-    // await sound.loadAsync(require("../assets/sound/testAudio2.mp3"));
 
-    // await sound.loadAsync(require('file:///Users/garethslinn/Library/Developer/CoreSimulator/Devices/1910CFD3-AF77-4088-9170-359E2F4B0299/data/Containers/Data/Application/524F02AD-9F2F-4EDB-8CA2-0B5E1EE9E558/Documents/testAudio3.mp3'));
-    
+      await sound.loadAsync({ uri: path });
 
-    await sound.loadAsync({ uri: fs });
-
-
-      
-      console.log("Playing Sound");
+      console.log('Playing Sound');
       await sound.playAsync();
-  
+
       console.log('Audio loaded successfully. Now playing...');
-  
+
       setSelectedPlayer(sound);
-  
+
       sound.setOnPlaybackStatusUpdate((status) => {
         if (status.isLoaded && status.didJustFinish) {
           setIsSoundFinish(true);
         }
       });
-  
+
       await sound.playAsync();
     } catch (error) {
       console.error('Error playing sound:', error);
     }
   }
-  
 
   const stopSound = useCallback(async () => {
     if (selectedPlayer) {
@@ -137,31 +137,19 @@ const AudioPlayer: React.FC = () => {
     }
   };
 
-  function deleteSound(path: string, index: number): void {
+  const deleteSound = async (path: string, index: number) => {
     try {
-      // Delete the downloaded file using FileSystem.deleteAsync
-      FileSystem.deleteAsync(path)
-        .then(() => {
-          setMP3Files((prev) => {
-            const newMp3Files = [...prev];
-            newMp3Files[index].downloaded = false;
-            newMp3Files[index].path = API.url + AUDIO[`testAudio${index + 1}`]; // Update the path to the remote file
-            return newMp3Files;
-          });
-        })
-        .catch((error) => {
-          console.error('Error deleting file:', error);
-        });
+      await FileSystem.deleteAsync(path);
+      setMP3Files((prev) => {
+        const newMp3Files = [...prev];
+        newMp3Files[index].downloaded = false;
+        newMp3Files[index].path = API.url + AUDIO[`testAudio${index + 1}`]; // Update the path to the remote file
+        return newMp3Files;
+      });
     } catch (error) {
       console.error('Error deleting file:', error);
     }
-  }
-
-  useEffect(() => {
-    return () => {
-      stopSound();
-    };
-  }, []);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
